@@ -5,7 +5,7 @@ pipeline {
     environment {
         APP_NAME = 'jenkins-cicd-demo'
         IMAGE_TAG = 'latest'
-        DOCKERHUB_USERNAME = 'HarshitMali930'
+        DOCKER_IMAGE = 'HarshitMali930/jenkins-cicd-demo'
     }
 
     stages {
@@ -20,19 +20,26 @@ pipeline {
         stage('Build') {
             steps {
                 echo 'Building application...'
-                sh 'python3 -m py_compile app/app.py'
+
+                sh '''
+                    python3 -m py_compile app/app.py
+                '''
             }
         }
 
         stage('Test') {
             steps {
-                echo 'Installing Python dependencies...'
+                echo 'Installing dependencies and running tests...'
 
                 sh '''
                     rm -rf .venv
+
                     python3 -m venv .venv
+
                     .venv/bin/python -m pip install --upgrade pip
+
                     .venv/bin/python -m pip install -r requirements.txt
+
                     .venv/bin/python -m pytest -v
                 '''
             }
@@ -54,7 +61,8 @@ pipeline {
 
                 sh '''
                     docker build -t ${APP_NAME}:${IMAGE_TAG} .
-                    docker tag ${APP_NAME}:${IMAGE_TAG} ${DOCKERHUB_USERNAME}/${APP_NAME}:${IMAGE_TAG}
+
+                    docker tag ${APP_NAME}:${IMAGE_TAG} ${DOCKER_IMAGE}:${IMAGE_TAG}
                 '''
             }
         }
@@ -63,14 +71,19 @@ pipeline {
             steps {
                 echo 'Pushing Docker image to Docker Hub...'
 
-                withCredentials([usernamePassword(
-                    credentialsId: 'dockerhub-creds',
-                    usernameVariable: 'DOCKER_USER',
-                    passwordVariable: 'DOCKER_TOKEN'
-                )]) {
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'dockerhub-creds',
+                        usernameVariable: 'DOCKER_USERNAME',
+                        passwordVariable: 'DOCKER_TOKEN'
+                    )
+                ]) {
+
                     sh '''
-                        echo "$DOCKER_TOKEN" | docker login -u "$DOCKER_USER" --password-stdin
-                        docker push ${DOCKERHUB_USERNAME}/${APP_NAME}:${IMAGE_TAG}
+                        echo "$DOCKER_TOKEN" | docker login -u "$DOCKER_USERNAME" --password-stdin
+
+                        docker push ${DOCKER_IMAGE}:${IMAGE_TAG}
+
                         docker logout
                     '''
                 }
@@ -79,6 +92,7 @@ pipeline {
     }
 
     post {
+
         success {
             echo 'CI/CD Pipeline completed successfully!'
         }
