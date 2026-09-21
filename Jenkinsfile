@@ -5,6 +5,7 @@ pipeline {
     environment {
         APP_NAME = 'jenkins-cicd-demo'
         IMAGE_TAG = 'latest'
+        DOCKERHUB_USERNAME = 'HarshitMali930'
     }
 
     stages {
@@ -53,7 +54,26 @@ pipeline {
 
                 sh '''
                     docker build -t ${APP_NAME}:${IMAGE_TAG} .
+                    docker tag ${APP_NAME}:${IMAGE_TAG} ${DOCKERHUB_USERNAME}/${APP_NAME}:${IMAGE_TAG}
                 '''
+            }
+        }
+
+        stage('Docker Push') {
+            steps {
+                echo 'Pushing Docker image to Docker Hub...'
+
+                withCredentials([usernamePassword(
+                    credentialsId: 'dockerhub-creds',
+                    usernameVariable: 'DOCKER_USER',
+                    passwordVariable: 'DOCKER_TOKEN'
+                )]) {
+                    sh '''
+                        echo "$DOCKER_TOKEN" | docker login -u "$DOCKER_USER" --password-stdin
+                        docker push ${DOCKERHUB_USERNAME}/${APP_NAME}:${IMAGE_TAG}
+                        docker logout
+                    '''
+                }
             }
         }
     }
