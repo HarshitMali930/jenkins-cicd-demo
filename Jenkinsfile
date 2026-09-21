@@ -26,26 +26,34 @@ pipeline {
         stage('Test') {
             steps {
                 echo 'Installing Python dependencies...'
-                sh 'python3 -m venv .venv'
-                sh '.venv/bin/pip install --upgrade pip'
-                sh '.venv/bin/pip install -r requirements.txt'
 
-                echo 'Running automated tests...'
-                sh '.venv/bin/pytest'
+                sh '''
+                    rm -rf .venv
+                    python3 -m venv .venv
+                    .venv/bin/python -m pip install --upgrade pip
+                    .venv/bin/python -m pip install -r requirements.txt
+                    .venv/bin/python -m pytest -v
+                '''
             }
         }
 
         stage('Package') {
             steps {
                 echo 'Packaging application...'
-                sh 'tar -czf ${APP_NAME}.tar.gz app tests requirements.txt'
+
+                sh '''
+                    tar -czf ${APP_NAME}.tar.gz app tests requirements.txt
+                '''
             }
         }
 
         stage('Docker Build') {
             steps {
                 echo 'Building Docker image...'
-                sh 'docker build -t ${APP_NAME}:${IMAGE_TAG} .'
+
+                sh '''
+                    docker build -t ${APP_NAME}:${IMAGE_TAG} .
+                '''
             }
         }
     }
