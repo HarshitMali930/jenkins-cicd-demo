@@ -5,6 +5,7 @@ pipeline {
     environment {
         APP_NAME = 'jenkins-cicd-demo'
         IMAGE_TAG = 'latest'
+        DOCKERHUB_USERNAME = 'HarshitMali930'
         DOCKER_IMAGE = 'HarshitMali930/jenkins-cicd-demo'
     }
 
@@ -33,13 +34,9 @@ pipeline {
 
                 sh '''
                     rm -rf .venv
-
                     python3 -m venv .venv
-
                     .venv/bin/python -m pip install --upgrade pip
-
                     .venv/bin/python -m pip install -r requirements.txt
-
                     .venv/bin/python -m pytest -v
                 '''
             }
@@ -61,7 +58,6 @@ pipeline {
 
                 sh '''
                     docker build -t ${APP_NAME}:${IMAGE_TAG} .
-
                     docker tag ${APP_NAME}:${IMAGE_TAG} ${DOCKER_IMAGE}:${IMAGE_TAG}
                 '''
             }
@@ -69,18 +65,17 @@ pipeline {
 
         stage('Docker Push') {
             steps {
-                echo 'Pushing Docker image to Docker Hub...'
+                echo 'Logging in and pushing image to Docker Hub...'
 
                 withCredentials([
-                    usernamePassword(
-                        credentialsId: 'dockerhub-creds',
-                        usernameVariable: 'DOCKER_USERNAME',
-                        passwordVariable: 'DOCKER_TOKEN'
+                    string(
+                        credentialsId: 'dockerhub-token',
+                        variable: 'DOCKER_TOKEN'
                     )
                 ]) {
 
                     sh '''
-                        echo "$DOCKER_TOKEN" | docker login -u "$DOCKER_USERNAME" --password-stdin
+                        echo "$DOCKER_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
 
                         docker push ${DOCKER_IMAGE}:${IMAGE_TAG}
 
@@ -106,3 +101,4 @@ pipeline {
         }
     }
 }
+
