@@ -1,4 +1,5 @@
 pipeline {
+
     agent any
 
     environment {
@@ -11,6 +12,7 @@ pipeline {
         stage('Checkout') {
             steps {
                 echo 'Checking out source code...'
+                checkout scm
             }
         }
 
@@ -23,8 +25,13 @@ pipeline {
 
         stage('Test') {
             steps {
+                echo 'Installing Python dependencies...'
+                sh 'python3 -m venv .venv'
+                sh '.venv/bin/pip install --upgrade pip'
+                sh '.venv/bin/pip install -r requirements.txt'
+
                 echo 'Running automated tests...'
-                sh 'python3 -m pytest'
+                sh '.venv/bin/pytest'
             }
         }
 
@@ -40,6 +47,20 @@ pipeline {
                 echo 'Building Docker image...'
                 sh 'docker build -t ${APP_NAME}:${IMAGE_TAG} .'
             }
+        }
+    }
+
+    post {
+        success {
+            echo 'CI/CD Pipeline completed successfully!'
+        }
+
+        failure {
+            echo 'CI/CD Pipeline failed. Check the console output.'
+        }
+
+        always {
+            echo 'Pipeline execution finished.'
         }
     }
 }
