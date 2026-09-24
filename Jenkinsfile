@@ -35,13 +35,9 @@ pipeline {
 
                 sh '''
                     rm -rf .venv
-
                     python3 -m venv .venv
-
                     .venv/bin/python -m pip install --upgrade pip
-
                     .venv/bin/python -m pip install -r requirements.txt
-
                     .venv/bin/python -m pytest -v
                 '''
             }
@@ -63,7 +59,6 @@ pipeline {
 
                 sh '''
                     docker build -t ${APP_NAME}:${IMAGE_TAG} .
-
                     docker tag ${APP_NAME}:${IMAGE_TAG} ${DOCKER_IMAGE}:${IMAGE_TAG}
                 '''
             }
@@ -71,7 +66,7 @@ pipeline {
 
         stage('Docker Push') {
             steps {
-                echo 'Logging in and pushing image to Docker Hub...'
+                echo 'Pushing image to Docker Hub...'
 
                 withCredentials([
                     string(
@@ -82,12 +77,34 @@ pipeline {
 
                     sh '''
                         echo "$DOCKER_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
-
                         docker push ${DOCKER_IMAGE}:${IMAGE_TAG}
-
                         docker logout
                     '''
                 }
+            }
+        }
+
+        stage('Kubernetes Deploy') {
+            steps {
+                echo 'Deploying application to Kubernetes...'
+
+                sh '''
+                    kubectl set image deployment/jenkins-cicd-demo \
+                    app=${DOCKER_IMAGE}:${IMAGE_TAG}
+
+                    kubectl rollout status deployment/jenkins-cicd-demo --timeout=120s
+                '''
+            }
+        }
+
+        stage('Verify Deployment') {
+            steps {
+                echo 'Verifying Kubernetes deployment...'
+
+                sh '''
+                    kubectl get deployment jenkins-cicd-demo
+                    kubectl get pods -l app=jenkins-cicd-demo
+                '''
             }
         }
     }
